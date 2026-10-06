@@ -1,0 +1,123 @@
+Ant: 처음 보는 지형 평가 커맨드
+================================
+
+모든 커맨드는 IsaacLab_RS 저장소 루트에서, Isaac Lab conda 환경 안에서 실행하시면 됩니다.
+
+0. 설치
+-------
+준비물은 아래와 같습니다.
+IsaacLab_RS 저장소(https://github.com/cailab-hy/IsaacLab_RS)가 설치되어 있고,
+그 conda 환경에서 Isaac-Ant-v0 학습과 재생이 되는 상태에서 설명드립니다.
+
+(1) 이 저장소를 받습니다. 위치는 어디든 괜찮습니다.
+
+    git clone https://github.com/brownporkcutlet/robotic_simulation_assignment_ant_rough_walk.git
+
+(2) 받은 폴더 3개를 IsaacLab_RS 루트에 복사합니다. <IsaacLab_RS 경로>는 사용하시는 경로로 바꿔 주세요 (예: ~/IsaacLab_RS).
+
+    cp -r robotic_simulation_assignment_ant_rough_walk/source \
+          robotic_simulation_assignment_ant_rough_walk/scripts \
+          robotic_simulation_assignment_ant_rough_walk/checkpoints  <IsaacLab_RS 경로>/
+
+    복사되는 파일은 아래와 같습니다. 모두 새 파일이라 IsaacLab_RS의 기존 파일은 하나도 덮어쓰지 않습니다.
+
+    source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/ant_rough/    학습 환경과 PPO 설정
+    source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/ant_unseen/   시험 지형
+    scripts/reinforcement_learning/rsl_rl/eval_unseen.py                     자세한 평가 스크립트
+    checkpoints/ant_walk_final.pt                                            학습된 최종 정책
+
+(3) 추가 설치 명령은 필요하지 않습니다. isaaclab_tasks가 폴더를 자동으로 찾아 태스크를 등록합니다.
+    등록됐는지 확인하시려면 아래 명령을 실행해 주세요. 태스크 6개가 보이면 정상입니다.
+
+    cd <IsaacLab_RS 경로>
+    python scripts/environments/list_envs.py | grep -E "Ant-Rough|Ant-Unseen"
+
+    Isaac-Ant-Rough-Walk-v0        학습용
+    Isaac-Ant-Unseen-Flat-v0       아래 시험 지형 5개
+    Isaac-Ant-Unseen-Waves-v0
+    Isaac-Ant-Unseen-Boxes-v0
+    Isaac-Ant-Unseen-Stairs-v0
+    Isaac-Ant-Unseen-Mixed-v0
+
+체크포인트
+    checkpoints/ant_walk_final.pt
+    Isaac-Ant-Rough-Walk-v0 에서 seed 3으로 3000회 학습한 정책입니다 (PPO, MLP 400-200-100).
+    관측은 59차원이며, 원본 Ant의 60차원에서 월드 좌표 몸통 높이(base_height) 하나를 뺀 것입니다.
+    시험 지형 태스크도 같은 59차원 관측으로 맞춰져 있어서 별도 옵션 없이 바로 실행됩니다.
+
+시험 지형
+    모두 학습에 쓰지 않은 지형이며, 종류는 아래와 같습니다. 이후 커맨드에서 Mixed 자리에 이름을 넣으시면 됩니다.
+
+    Flat     평지입니다. 원본 Isaac-Ant-v0와 같은 바닥입니다.
+    Waves    사인파 굴곡입니다. 높이 2~8cm, 파장 2m입니다.
+    Boxes    45cm 격자 박스입니다. 칸마다 높이가 -6~+6cm로 다릅니다.
+    Stairs   피라미드 계단입니다. 단 높이 2~6cm, 단 폭 50cm입니다.
+    Mixed    위 세 가지가 8m 타일마다 무작위로 섞여 있습니다.
+
+    공통 조건은 아래와 같습니다.
+    로봇은 지형 첫 줄에서 출발해 +x 방향 목표로 걷습니다. 에피소드는 16초(960스텝)입니다.
+    보상과 넘어짐 규칙(몸통 높이 0.31m 미만이면 종료)은 원본 Isaac-Ant-v0 그대로입니다.
+
+
+1. 화면으로 보기
+----------------
+python scripts/reinforcement_learning/rsl_rl/play_one_episode.py --task Isaac-Ant-Unseen-Mixed-v0 --num_envs 8 --real-time --checkpoint checkpoints/ant_walk_final.pt
+
+로봇 8대가 지형 한 줄에 한 대씩 출발해 +x 방향으로 걷습니다. 시점은 마우스로 옮기실 수 있습니다.
+--real-time 을 빼면 실제 시간보다 빠르게 실행됩니다. 한 에피소드(16초)가 끝나면 결과를 출력하고 종료합니다.
+
+
+2. 한 에피소드 평가 (로봇 100대, 보상 합계와 에피소드 길이 출력)
+---------------------------------------------------------------
+지형별 커맨드는 아래와 같습니다.
+
+python scripts/reinforcement_learning/rsl_rl/play_one_episode.py --task Isaac-Ant-Unseen-Flat-v0   --num_envs 100 --headless --checkpoint checkpoints/ant_walk_final.pt
+python scripts/reinforcement_learning/rsl_rl/play_one_episode.py --task Isaac-Ant-Unseen-Waves-v0  --num_envs 100 --headless --checkpoint checkpoints/ant_walk_final.pt
+python scripts/reinforcement_learning/rsl_rl/play_one_episode.py --task Isaac-Ant-Unseen-Boxes-v0  --num_envs 100 --headless --checkpoint checkpoints/ant_walk_final.pt
+python scripts/reinforcement_learning/rsl_rl/play_one_episode.py --task Isaac-Ant-Unseen-Stairs-v0 --num_envs 100 --headless --checkpoint checkpoints/ant_walk_final.pt
+python scripts/reinforcement_learning/rsl_rl/play_one_episode.py --task Isaac-Ant-Unseen-Mixed-v0  --num_envs 100 --headless --checkpoint checkpoints/ant_walk_final.pt
+
+에피소드 길이는 최대 960스텝(16초)입니다. 960보다 작으면 그 로봇은 중간에 넘어진 것입니다.
+
+
+3. 자세한 평가 (로봇 256대, 보상·넘어짐 비율·이동 거리·걸음 지표를 JSON으로 저장)
+--------------------------------------------------------------------------------
+지형별 커맨드는 아래와 같습니다.
+
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Flat-v0   --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Flat"   --output logs/eval/final.jsonl
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Waves-v0  --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Waves"  --output logs/eval/final.jsonl
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Boxes-v0  --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Boxes"  --output logs/eval/final.jsonl
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Stairs-v0 --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Stairs" --output logs/eval/final.jsonl
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Mixed-v0  --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Mixed"  --output logs/eval/final.jsonl
+
+결과는 터미널의 [RESULT] 줄과 logs/eval/final.jsonl 에 한 줄씩 저장됩니다. 주요 항목은 아래와 같습니다.
+  reward      : 원래 Ant 보상의 에피소드 합계
+  fall_rate   : 시간 초과 전에 넘어진 로봇의 비율
+  distance_m  : 목표 방향으로 이동한 거리
+  gait        : 걸음 지표 (행동 변화량, 위아래 속도 제곱, 몸통 흔들림, 기울기, 소비 전력)
+
+
+4. 마찰을 바꿔서 평가 (평지, 마찰 0.5와 0.2)
+-------------------------------------------
+커맨드는 아래와 같습니다. 첫 줄이 마찰 0.5, 둘째 줄이 마찰 0.2입니다.
+
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Flat-v0 --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Fric0.5" --output logs/eval/final.jsonl env.scene.terrain.physics_material.friction_combine_mode=multiply env.scene.terrain.physics_material.static_friction=0.5 env.scene.terrain.physics_material.dynamic_friction=0.5
+python scripts/reinforcement_learning/rsl_rl/eval_unseen.py --task Isaac-Ant-Unseen-Flat-v0 --headless --num_envs 256 --seed 42 --checkpoint checkpoints/ant_walk_final.pt --label "final|Fric0.2" --output logs/eval/final.jsonl env.scene.terrain.physics_material.friction_combine_mode=multiply env.scene.terrain.physics_material.static_friction=0.2 env.scene.terrain.physics_material.dynamic_friction=0.2
+
+
+5. ###선택: 출발 높이를 6cm 올린 조건###
+---------------------------------
+원본 환경은 리셋 때 발이 땅에 박힌 채 생성되어 일부 로봇이 튀어 올라 뒤집힙니다.
+로봇을 0.5m 대신 0.56m에 생성하면 이 현상이 사라집니다.
+위 어느 커맨드든 맨 뒤에 아래를 붙이시면 됩니다 (따옴표 포함).
+
+"env.scene.robot.init_state.pos=[0.0,0.0,0.56]"
+
+
+6. 학습 (같은 설정으로 다시 학습)
+--------------------------------
+커맨드는 아래와 같습니다.
+
+python scripts/reinforcement_learning/rsl_rl/train.py --task Isaac-Ant-Rough-Walk-v0 --headless --seed 3
+
+체크포인트는 logs/rsl_rl/ant_walk/<날짜>/model_2999.pt 에 저장됩니다.
